@@ -45,7 +45,8 @@ void BosonCamera::onInit()
   it = std::shared_ptr<image_transport::ImageTransport>(new image_transport::ImageTransport(nh));
   image_pub = it->advertiseCamera("image_raw", 1);
   image_pub_8 = it->advertiseCamera("image8", 1);
-  image_pub_color = it->advertiseCamera("image_heatmap", 1);
+  image_pub_heatmap = it->advertiseCamera("image_heatmap", 1);
+  image_pub_temp = it->advertiseCamera("image_temp", 1);
 
   bool exit = false;
 
@@ -128,7 +129,9 @@ void BosonCamera::agcBasicLinear(const Mat& input_16,
                                  Mat* output_8,
                                  Mat* output_16,
                                  const int& height,
-                                 const int& width)
+                                 const int& width,
+                                 double* max_temp,
+                                 double* min_temp)
 {
   int i, j;  // aux variables
 
@@ -153,11 +156,13 @@ void BosonCamera::agcBasicLinear(const Mat& input_16,
         max1 = value3;
     }
   }
+  *max_temp = max1 / 100. - 273.15;
+  *min_temp = min1 / 100. - 273.15;
 
-  int max_temp = 40;
-  int min_temp = 20;
-  max1 = (max_temp + 273.15) * 100;
-  min1 = (min_temp + 273.15) * 100;
+  int max_temp_limit = 40;
+  int min_temp_limit = 20;
+  max1 = (max_temp_limit + 273.15) * 100;
+  min1 = (min_temp_limit + 273.15) * 100;
 
   for (int i = 0; i < height; i++)
   {
@@ -311,7 +316,7 @@ bool BosonCamera::openCamera()
   thermal16 = Mat(height, width, CV_16U, buffer_start);
   // OpenCV output buffer : Data used to display the video
   thermal8_linear = Mat(height, width, CV_8U, 1);
-  thermal8_color = Mat(height, width, CV_8UC3, 1);
+  thermal8_heatmap = Mat(height, width, CV_8UC3, 1);
   thermal16_linear = Mat(height, width, CV_16U, 1);
 
   // Declarations for 8bits YCbCr mode
@@ -374,7 +379,8 @@ void BosonCamera::captureAndPublish(const ros::TimerEvent& evt)
   {
     // -----------------------------
     // RAW16 DATA
-    agcBasicLinear(thermal16, &thermal8_linear, &thermal16_linear, height, width);
+    agcBasicLinear(thermal16, &thermal8_linear, &thermal16_linear, height, width,
+                   &max_temp, &min_temp);
 
     // Display thermal after 16-bits AGC... will display an image
     if (!zoom_enable)
@@ -423,16 +429,38 @@ void BosonCamera::captureAndPublish(const ros::TimerEvent& evt)
       ci->header.stamp = pub_image_8->header.stamp;
       image_pub_8.publish(pub_image_8, ci);
 
-      cv::applyColorMap(thermal8_linear, thermal8_color, cv::COLORMAP_JET);
+      cv::applyColorMap(thermal8_linear, thermal8_heatmap, cv::COLORMAP_JET);
       // 8bit heatmap image
-      cv_img.image = thermal8_color;
+      cv_img.image = thermal8_heatmap;
       cv_img.header.stamp = ros::Time::now();
       cv_img.header.frame_id = frame_id;
       cv_img.encoding = "bgr8";
-      pub_image_color = cv_img.toImageMsg();
+      pub_image_heatmap = cv_img.toImageMsg();
 
-      ci->header.stamp = pub_image_color->header.stamp;
-      image_pub_color.publish(pub_image_color, ci);
+      ci->header.stamp = pub_image_heatmap->header.stamp;
+      image_pub_heatmap.publish(pub_image_heatmap, ci);
+
+      // put temperature info
+      thermal8_temp = thermal8_heatmap.clone();
+      std::stringstream max_temp_ss, min_temp_ss;
+      max_temp_ss << std::fixed << std::setprecision(2) << max_temp;
+      min_temp_ss << std::fixed << std::setprecision(2) << min_temp;
+
+      std::string disp_max_temp = "Max: " + max_temp_ss.str() + " deg";
+      std::string disp_min_temp = "Min: " + min_temp_ss.str() + " deg";
+      cv::putText(thermal8_temp, disp_max_temp, cv::Point(15, 15),
+                  cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 0, 0), 1);
+      cv::putText(thermal8_temp, disp_min_temp, cv::Point(15, 30),
+                  cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 0, 0), 1);
+      // 8bit image
+      cv_img.image = thermal8_temp;
+      cv_img.header.stamp = ros::Time::now();
+      cv_img.header.frame_id = frame_id;
+      cv_img.encoding = "bgr8";
+      pub_image_temp = cv_img.toImageMsg();
+
+      ci->header.stamp = pub_image_temp->header.stamp;
+      image_pub_temp.publish(pub_image_temp, ci);
     }
     else
     {
