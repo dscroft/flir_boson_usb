@@ -441,9 +441,9 @@ void BosonCamera::captureAndPublish(const ros::TimerEvent& evt)
       ci->header.stamp = pub_image_heatmap->header.stamp;
       image_pub_heatmap.publish(pub_image_heatmap, ci);
 
-      // put temperature info
+      // 8bit heatmap image with temperature info
       thermal8_temp = thermal8_heatmap.clone();
-      std::stringstream max_temp_ss, min_temp_ss;
+      std::stringstream max_temp_ss, min_temp_ss, ptr_temp_ss;
       max_temp_ss << std::fixed << std::setprecision(2) << max_temp;
       min_temp_ss << std::fixed << std::setprecision(2) << min_temp;
 
@@ -454,9 +454,19 @@ void BosonCamera::captureAndPublish(const ros::TimerEvent& evt)
       cv::putText(thermal8_temp, disp_min_temp, cv::Point(15, 30),
                   cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 0, 0), 1);
 
-      cv::circle(thermal8_temp, cv::Point(point_x, point_y), 8,
-                 cv::Scalar(0, 0, 0), 1, cv::LINE_AA);
-      // 8bit image
+      // pointer temperature
+      {
+        std::lock_guard<std::mutex> lock(mutex);
+        temp_ptr = cv::Point(point_x, point_y);
+        ptr_temp = thermal16_linear.at<uint16_t>(point_x, point_y) / 100.0 - 273.15;
+      }
+      ptr_temp_ss << std::fixed << std::setprecision(2) << ptr_temp;
+      std::string disp_ptr_temp = "Ptr: " + ptr_temp_ss.str() + " deg";
+      cv::putText(thermal8_temp, disp_ptr_temp, cv::Point(45, 30),
+                  cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 0, 0), 1);
+      cv::circle(thermal8_temp, temp_ptr, 8, cv::Scalar(0, 0, 0), 1, cv::LINE_AA);
+      //
+
       cv_img.image = thermal8_temp;
       cv_img.header.stamp = ros::Time::now();
       cv_img.header.frame_id = frame_id;

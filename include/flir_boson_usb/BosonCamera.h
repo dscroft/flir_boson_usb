@@ -93,7 +93,7 @@ class BosonCamera : public nodelet::Nodelet
     sensor_msgs::ImagePtr pub_image, pub_image_8, pub_image_heatmap, pub_image_temp;
     ros::Timer capture_timer;
     int32_t width, height;
-    double max_temp, min_temp;
+    double max_temp, min_temp, ptr_temp;
     int32_t fd;
     int32_t i;
     struct v4l2_capability cap;
@@ -104,6 +104,7 @@ class BosonCamera : public nodelet::Nodelet
 
     cv::Mat thermal16, thermal16_linear, thermal8_linear, thermal8_heatmap, thermal8_temp,
             thermal16_linear_zoom, thermal_rgb_zoom, thermal_luma, thermal_rgb;
+    cv::Point temp_ptr;
 
     // Default Program options
     std::string frame_id, dev_path, camera_info_url,
