@@ -72,6 +72,7 @@ class BosonCamera : public nodelet::Nodelet
     virtual void onInit();
     void agcBasicLinear(const cv::Mat& input_16,
                         cv::Mat* output_8,
+                        cv::Mat* output_16,
                         const int& height,
                         const int& width);
     bool openCamera();
@@ -81,9 +82,9 @@ class BosonCamera : public nodelet::Nodelet
     ros::NodeHandle nh, pnh;
     std::shared_ptr<camera_info_manager::CameraInfoManager> camera_info;
     std::shared_ptr<image_transport::ImageTransport> it;
-    image_transport::CameraPublisher image_pub;
+    image_transport::CameraPublisher image_pub, image_pub_8, image_pub_color;
     cv_bridge::CvImage cv_img;
-    sensor_msgs::ImagePtr pub_image;
+    sensor_msgs::ImagePtr pub_image, pub_image_8, pub_image_color;
     ros::Timer capture_timer;
     int32_t width, height;
     int32_t fd;
@@ -94,7 +95,7 @@ class BosonCamera : public nodelet::Nodelet
     struct v4l2_buffer bufferinfo;
     void* buffer_start;
 
-    cv::Mat thermal16, thermal16_linear, thermal16_linear_zoom,
+    cv::Mat thermal16, thermal16_linear, thermal8_linear, thermal8_color, thermal16_linear_zoom,
             thermal_rgb_zoom, thermal_luma, thermal_rgb;
 
     // Default Program options
