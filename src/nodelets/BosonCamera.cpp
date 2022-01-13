@@ -130,8 +130,8 @@ void BosonCamera::agcBasicLinear(const Mat& input_16,
                                  Mat* output_16,
                                  const int& height,
                                  const int& width,
-                                 int* max_temp,
-                                 int* min_temp)
+                                 double* max_temp,
+                                 double* min_temp)
 {
   int i, j;  // aux variables
 
@@ -442,8 +442,12 @@ void BosonCamera::captureAndPublish(const ros::TimerEvent& evt)
 
       // put temperature info
       thermal8_temp = thermal8_heatmap.clone();
-      std::string disp_max_temp = "Max: " + std::to_string(max_temp) + " deg";
-      std::string disp_min_temp = "Min: " + std::to_string(min_temp) + " deg";
+      std::stringstream max_temp_ss, min_temp_ss;
+      max_temp_ss << std::fixed << std::setprecision(2) << max_temp;
+      min_temp_ss << std::fixed << std::setprecision(2) << min_temp;
+
+      std::string disp_max_temp = "Max: " + max_temp_ss.str() + " deg";
+      std::string disp_min_temp = "Min: " + min_temp_ss.str() + " deg";
       cv::putText(thermal8_temp, disp_max_temp, cv::Point(15, 15),
                   cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 0, 0), 1);
       cv::putText(thermal8_temp, disp_min_temp, cv::Point(15, 30),

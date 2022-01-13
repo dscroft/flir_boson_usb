@@ -75,8 +75,8 @@ class BosonCamera : public nodelet::Nodelet
                         cv::Mat* output_16,
                         const int& height,
                         const int& width,
-                        int* max_temp,
-                        int* min_temp);
+                        double* max_temp,
+                        double* min_temp);
     bool openCamera();
     bool closeCamera();
     void captureAndPublish(const ros::TimerEvent& evt);
@@ -89,7 +89,7 @@ class BosonCamera : public nodelet::Nodelet
     sensor_msgs::ImagePtr pub_image, pub_image_8, pub_image_heatmap, pub_image_temp;
     ros::Timer capture_timer;
     int32_t width, height;
-    int32_t max_temp, min_temp;
+    double max_temp, min_temp;
     int32_t fd;
     int32_t i;
     struct v4l2_capability cap;
