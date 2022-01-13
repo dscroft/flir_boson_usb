@@ -47,6 +47,10 @@
 #include <sensor_msgs/CameraInfo.h>
 #include <sensor_msgs/Image.h>
 
+// Dynamic Reconfigure
+#include <dynamic_reconfigure/server.h>
+#include "flir_boson_usb/BosonCameraConfig.h"
+
 namespace flir_boson_usb
 {
 
@@ -108,6 +112,14 @@ class BosonCamera : public nodelet::Nodelet
     Encoding video_mode;
     bool zoom_enable;
     SensorTypes sensor_type;
+
+    dynamic_reconfigure::Server<flir_boson_usb::BosonCameraConfig> m_reconfigure_server;
+    std::mutex mutex;
+    void reconfigureCallback(const flir_boson_usb::BosonCameraConfig& config);
+    // Dynamic reconfigure parameters
+    int point_x, point_y;
+    int max_temp_limit, min_temp_limit;
+
 };
 
 }  // namespace flir_boson_usb

@@ -159,10 +159,11 @@ void BosonCamera::agcBasicLinear(const Mat& input_16,
   *max_temp = max1 / 100. - 273.15;
   *min_temp = min1 / 100. - 273.15;
 
-  int max_temp_limit = 40;
-  int min_temp_limit = 20;
-  max1 = (max_temp_limit + 273.15) * 100;
-  min1 = (min_temp_limit + 273.15) * 100;
+  {
+    std::lock_guard<std::mutex> lock(mutex);
+    max1 = (max_temp_limit + 273.15) * 100;
+    min1 = (min_temp_limit + 273.15) * 100;
+  }
 
   for (int i = 0; i < height; i++)
   {
@@ -452,6 +453,9 @@ void BosonCamera::captureAndPublish(const ros::TimerEvent& evt)
                   cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 0, 0), 1);
       cv::putText(thermal8_temp, disp_min_temp, cv::Point(15, 30),
                   cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 0, 0), 1);
+
+      cv::circle(thermal8_temp, cv::Point(point_x, point_y), 8,
+                 cv::Scalar(0, 0, 0), 1, cv::LINE_AA);
       // 8bit image
       cv_img.image = thermal8_temp;
       cv_img.header.stamp = ros::Time::now();
@@ -491,4 +495,13 @@ void BosonCamera::captureAndPublish(const ros::TimerEvent& evt)
     ci->header.stamp = pub_image->header.stamp;
     image_pub.publish(pub_image, ci);
   }
+}
+
+void BosonCamera::reconfigureCallback(const flir_boson_usb::BosonCameraConfig& config)
+{
+  std::lock_guard<std::mutex> lock(mutex);
+  point_x = config.point_x;
+  point_y = config.point_y;
+  max_temp_limit = config.max_temp_limit;
+  min_temp_limit = config.min_temp_limit;
 }
