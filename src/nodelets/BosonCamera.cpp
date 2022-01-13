@@ -423,7 +423,7 @@ void BosonCamera::captureAndPublish(const ros::TimerEvent& evt)
       ci->header.stamp = pub_image_8->header.stamp;
       image_pub_8.publish(pub_image_8, ci);
 
-      cv::applyColorMap (thermal8_linear, thermal8_color, cv::COLORMAP_TURBO);
+      cv::applyColorMap (thermal8_linear, thermal8_color, cv::COLORMAP_JET);
       // 8bit heatmap image
       cv_img.image = thermal8_color;
       cv_img.header.stamp = ros::Time::now();
