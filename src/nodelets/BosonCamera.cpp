@@ -130,8 +130,8 @@ void BosonCamera::agcBasicLinear(const Mat& input_16,
                                  Mat* output_16,
                                  const int& height,
                                  const int& width,
-                                 int& max_temp,
-                                 int& min_temp)
+                                 int* max_temp,
+                                 int* min_temp)
 {
   int i, j;  // aux variables
 
@@ -156,8 +156,8 @@ void BosonCamera::agcBasicLinear(const Mat& input_16,
         max1 = value3;
     }
   }
-  max_temp = max1 / 100. - 273.15;
-  min_temp = min1 / 100. - 273.15;
+  *max_temp = max1 / 100. - 273.15;
+  *min_temp = min1 / 100. - 273.15;
 
   int max_temp_limit = 40;
   int min_temp_limit = 20;
@@ -380,7 +380,7 @@ void BosonCamera::captureAndPublish(const ros::TimerEvent& evt)
     // -----------------------------
     // RAW16 DATA
     agcBasicLinear(thermal16, &thermal8_linear, &thermal16_linear, height, width,
-                   max_temp, min_temp);
+                   &max_temp, &min_temp);
 
     // Display thermal after 16-bits AGC... will display an image
     if (!zoom_enable)
