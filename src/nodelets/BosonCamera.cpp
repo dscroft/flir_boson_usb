@@ -44,6 +44,8 @@ void BosonCamera::onInit()
       new camera_info_manager::CameraInfoManager(nh));
   it = std::shared_ptr<image_transport::ImageTransport>(new image_transport::ImageTransport(nh));
   image_pub = it->advertiseCamera("image_raw", 1);
+  image_pub_8 = it->advertiseCamera("image8", 1);
+  image_pub_color = it->advertiseCamera("image_heatmap", 1);
 
   bool exit = false;
 
@@ -124,6 +126,7 @@ void BosonCamera::onInit()
 // Output is a MATRIX (height x width) of 8 bits (OpenCV mat)
 void BosonCamera::agcBasicLinear(const Mat& input_16,
                                  Mat* output_8,
+                                 Mat* output_16,
                                  const int& height,
                                  const int& width)
 {
@@ -151,6 +154,11 @@ void BosonCamera::agcBasicLinear(const Mat& input_16,
     }
   }
 
+  int max_temp = 40;
+  int min_temp = 20;
+  max1 = (max_temp + 273.15) * 100;
+  min1 = (min_temp + 273.15) * 100;
+
   for (int i = 0; i < height; i++)
   {
     for (int j = 0; j < width; j++)
@@ -158,9 +166,20 @@ void BosonCamera::agcBasicLinear(const Mat& input_16,
       value1 = input_16.at<uchar>(i, j * 2 + 1) & 0xFF;     // High Byte
       value2 = input_16.at<uchar>(i, j * 2) & 0xFF;         // Low Byte
       value3 = (value1 << 8) + value2;
-      value4 = ((255 * (value3 - min1))) / (max1 - min1);
 
-      output_8->at<uchar>(i, j) = static_cast<uint8_t>(value4 & 0xFF);
+      if (value3 > max1)
+      {
+        value3 = max1;
+      }
+      if (value3 < min1)
+      {
+        value3 = min1;
+      }
+
+      value4 = ((255 * (value3 - min1))) / (max1 - min1);
+      output_8->at<uchar>(i, j) = static_cast<uint8_t>(value4);
+      // output raw 16 bit image
+      output_16->at<uint16_t>(i, j) = static_cast<uint16_t>(value3);
     }
   }
 }
@@ -291,7 +310,9 @@ bool BosonCamera::openCamera()
   // OpenCV input buffer  : Asking for all info: two bytes per pixel (RAW16)  RAW16 mode`
   thermal16 = Mat(height, width, CV_16U, buffer_start);
   // OpenCV output buffer : Data used to display the video
-  thermal16_linear = Mat(height, width, CV_8U, 1);
+  thermal8_linear = Mat(height, width, CV_8U, 1);
+  thermal8_color = Mat(height, width, CV_8UC3, 1);
+  thermal16_linear = Mat(height, width, CV_16U, 1);
 
   // Declarations for 8bits YCbCr mode
   // Will be used in case we are reading YUV format
@@ -353,39 +374,65 @@ void BosonCamera::captureAndPublish(const ros::TimerEvent& evt)
   {
     // -----------------------------
     // RAW16 DATA
-    agcBasicLinear(thermal16, &thermal16_linear, height, width);
+    agcBasicLinear(thermal16, &thermal8_linear, &thermal16_linear, height, width);
 
     // Display thermal after 16-bits AGC... will display an image
     if (!zoom_enable)
     {
-      // Threshold using Otsu's method, then use the result as a mask on the original image
-      Mat mask_mat, masked_img;
-      threshold(thermal16_linear, mask_mat, 0, 255, CV_THRESH_BINARY|CV_THRESH_OTSU);
-      thermal16_linear.copyTo(masked_img, mask_mat);
+      bool use_filter = false;
+      if (use_filter)
+      {
+        // Threshold using Otsu's method, then use the result as a mask on the original image
+        Mat mask_mat, masked_img;
+        threshold(thermal8_linear, mask_mat, 0, 255, CV_THRESH_BINARY|CV_THRESH_OTSU);
+        thermal8_linear.copyTo(masked_img, mask_mat);
 
-      // Normalize the pixel values to the range [0, 1] then raise to power (gamma). Then convert back for display.
-      Mat d_out_img, norm_image, d_norm_image, gamma_corrected_image, d_gamma_corrected_image;
-      double gamma = 0.8;
-      masked_img.convertTo(d_out_img, CV_64FC1);
-      normalize(d_out_img, d_norm_image, 0, 1, NORM_MINMAX, CV_64FC1);
-      pow(d_out_img, gamma, d_gamma_corrected_image);
-      d_gamma_corrected_image.convertTo(gamma_corrected_image, CV_8UC1);
-      normalize(gamma_corrected_image, gamma_corrected_image, 0, 255, NORM_MINMAX, CV_8UC1);
+        // Normalize the pixel values to the range [0, 1] then raise to power (gamma). Then convert back for display.
+        Mat d_out_img, norm_image, d_norm_image, gamma_corrected_image, d_gamma_corrected_image;
+        double gamma = 0.8;
+        masked_img.convertTo(d_out_img, CV_64FC1);
+        normalize(d_out_img, d_norm_image, 0, 1, NORM_MINMAX, CV_64FC1);
+        pow(d_out_img, gamma, d_gamma_corrected_image);
+        d_gamma_corrected_image.convertTo(gamma_corrected_image, CV_8UC1);
+        normalize(gamma_corrected_image, gamma_corrected_image, 0, 255, NORM_MINMAX, CV_8UC1);
 
-      // Apply top hat filter
-      int erosion_size = 5;
-      Mat top_hat_img, kernel = getStructuringElement(MORPH_ELLIPSE,
-          Size(2 * erosion_size + 1, 2 * erosion_size + 1));
-      morphologyEx(gamma_corrected_image, top_hat_img, MORPH_TOPHAT, kernel);
+        // Apply top hat filter
+        int erosion_size = 5;
+        Mat top_hat_img, kernel = getStructuringElement(MORPH_ELLIPSE,
+            Size(2 * erosion_size + 1, 2 * erosion_size + 1));
+        morphologyEx(gamma_corrected_image, top_hat_img, MORPH_TOPHAT, kernel);
+      }
 
+      // 16bit image
       cv_img.image = thermal16_linear;
       cv_img.header.stamp = ros::Time::now();
       cv_img.header.frame_id = frame_id;
-      cv_img.encoding = "mono8";
+      cv_img.encoding = "16UC1";
       pub_image = cv_img.toImageMsg();
 
       ci->header.stamp = pub_image->header.stamp;
       image_pub.publish(pub_image, ci);
+
+      // 8bit image
+      cv_img.image = thermal8_linear;
+      cv_img.header.stamp = ros::Time::now();
+      cv_img.header.frame_id = frame_id;
+      cv_img.encoding = "mono8";
+      pub_image_8 = cv_img.toImageMsg();
+
+      ci->header.stamp = pub_image_8->header.stamp;
+      image_pub_8.publish(pub_image_8, ci);
+
+      cv::applyColorMap(thermal8_linear, thermal8_color, cv::COLORMAP_JET);
+      // 8bit heatmap image
+      cv_img.image = thermal8_color;
+      cv_img.header.stamp = ros::Time::now();
+      cv_img.header.frame_id = frame_id;
+      cv_img.encoding = "bgr8";
+      pub_image_color = cv_img.toImageMsg();
+
+      ci->header.stamp = pub_image_color->header.stamp;
+      image_pub_color.publish(pub_image_color, ci);
     }
     else
     {
