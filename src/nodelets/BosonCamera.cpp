@@ -175,7 +175,7 @@ void BosonCamera::agcBasicLinear(const Mat& input_16,
       {
         value3 = min1;
       }
-      
+
       value4 = ((255 * (value3 - min1))) / (max1 - min1);
       output_8->at<uchar>(i, j) = static_cast<uint8_t>(value4);
       // output raw 16 bit image
@@ -423,7 +423,7 @@ void BosonCamera::captureAndPublish(const ros::TimerEvent& evt)
       ci->header.stamp = pub_image_8->header.stamp;
       image_pub_8.publish(pub_image_8, ci);
 
-      cv::applyColorMap (thermal8_linear, thermal8_color, cv::COLORMAP_JET);
+      cv::applyColorMap(thermal8_linear, thermal8_color, cv::COLORMAP_JET);
       // 8bit heatmap image
       cv_img.image = thermal8_color;
       cv_img.header.stamp = ros::Time::now();
@@ -433,7 +433,6 @@ void BosonCamera::captureAndPublish(const ros::TimerEvent& evt)
 
       ci->header.stamp = pub_image_color->header.stamp;
       image_pub_color.publish(pub_image_color, ci);
-
     }
     else
     {
