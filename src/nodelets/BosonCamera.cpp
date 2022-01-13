@@ -156,8 +156,8 @@ void BosonCamera::agcBasicLinear(const Mat& input_16,
         max1 = value3;
     }
   }
-  max_temp = int(max1) / 100. - 273.15;
-  min_temp = int(min1) / 100. - 273.15;
+  max_temp = max1 / 100. - 273.15;
+  min_temp = min1 / 100. - 273.15;
 
   int max_temp_limit = 40;
   int min_temp_limit = 20;
@@ -444,10 +444,10 @@ void BosonCamera::captureAndPublish(const ros::TimerEvent& evt)
       thermal8_temp = thermal8_heatmap.clone();
       std::string disp_max_temp = "Max: " + std::to_string(max_temp) + " deg";
       std::string disp_min_temp = "Min: " + std::to_string(min_temp) + " deg";
-      cv::putText(thermal8_temp, disp_max_temp, cv::Point(15,15),
-                  cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0,0,0), 1);
-      cv::putText(thermal8_temp, disp_min_temp, cv::Point(15,30),
-                  cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0,0,0), 1);
+      cv::putText(thermal8_temp, disp_max_temp, cv::Point(15, 15),
+                  cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 0, 0), 1);
+      cv::putText(thermal8_temp, disp_min_temp, cv::Point(15, 30),
+                  cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 0, 0), 1);
       // 8bit image
       cv_img.image = thermal8_temp;
       cv_img.header.stamp = ros::Time::now();
