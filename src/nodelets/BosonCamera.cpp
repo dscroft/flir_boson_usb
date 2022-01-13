@@ -126,7 +126,7 @@ void BosonCamera::onInit()
 // Output is a MATRIX (height x width) of 8 bits (OpenCV mat)
 void BosonCamera::agcBasicLinear(const Mat& input_16,
                                  Mat* output_8,
-				 Mat* output_16,
+                                 Mat* output_16,
                                  const int& height,
                                  const int& width)
 {
@@ -169,11 +169,11 @@ void BosonCamera::agcBasicLinear(const Mat& input_16,
 
       if (value3 > max1)
       {
-	value3 = max1;
+        value3 = max1;
       }
       if (value3 < min1)
       {
-	value3 = min1;
+        value3 = min1;
       }
       
       value4 = ((255 * (value3 - min1))) / (max1 - min1);
@@ -382,25 +382,25 @@ void BosonCamera::captureAndPublish(const ros::TimerEvent& evt)
       bool use_filter = false;
       if (use_filter)
       {
-	// Threshold using Otsu's method, then use the result as a mask on the original image
-	Mat mask_mat, masked_img;
-	threshold(thermal8_linear, mask_mat, 0, 255, CV_THRESH_BINARY|CV_THRESH_OTSU);
-	thermal8_linear.copyTo(masked_img, mask_mat);
+        // Threshold using Otsu's method, then use the result as a mask on the original image
+        Mat mask_mat, masked_img;
+        threshold(thermal8_linear, mask_mat, 0, 255, CV_THRESH_BINARY|CV_THRESH_OTSU);
+        thermal8_linear.copyTo(masked_img, mask_mat);
 
-	// Normalize the pixel values to the range [0, 1] then raise to power (gamma). Then convert back for display.
-	Mat d_out_img, norm_image, d_norm_image, gamma_corrected_image, d_gamma_corrected_image;
-	double gamma = 0.8;
-	masked_img.convertTo(d_out_img, CV_64FC1);
-	normalize(d_out_img, d_norm_image, 0, 1, NORM_MINMAX, CV_64FC1);
-	pow(d_out_img, gamma, d_gamma_corrected_image);
-	d_gamma_corrected_image.convertTo(gamma_corrected_image, CV_8UC1);
-	normalize(gamma_corrected_image, gamma_corrected_image, 0, 255, NORM_MINMAX, CV_8UC1);
+        // Normalize the pixel values to the range [0, 1] then raise to power (gamma). Then convert back for display.
+        Mat d_out_img, norm_image, d_norm_image, gamma_corrected_image, d_gamma_corrected_image;
+        double gamma = 0.8;
+        masked_img.convertTo(d_out_img, CV_64FC1);
+        normalize(d_out_img, d_norm_image, 0, 1, NORM_MINMAX, CV_64FC1);
+        pow(d_out_img, gamma, d_gamma_corrected_image);
+        d_gamma_corrected_image.convertTo(gamma_corrected_image, CV_8UC1);
+        normalize(gamma_corrected_image, gamma_corrected_image, 0, 255, NORM_MINMAX, CV_8UC1);
 
-	// Apply top hat filter
-	int erosion_size = 5;
-	Mat top_hat_img, kernel = getStructuringElement(MORPH_ELLIPSE,
-	    Size(2 * erosion_size + 1, 2 * erosion_size + 1));
-	morphologyEx(gamma_corrected_image, top_hat_img, MORPH_TOPHAT, kernel);
+        // Apply top hat filter
+        int erosion_size = 5;
+        Mat top_hat_img, kernel = getStructuringElement(MORPH_ELLIPSE,
+            Size(2 * erosion_size + 1, 2 * erosion_size + 1));
+        morphologyEx(gamma_corrected_image, top_hat_img, MORPH_TOPHAT, kernel);
       }
 
       // 16bit image
