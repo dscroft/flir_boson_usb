@@ -49,8 +49,8 @@ void BosonCamera::onInit()
   image_pub_temp = it->advertiseCamera("image_temp", 1);
 
   bool exit = false;
-  m_reconfigure_server.setCallback([this](flir_boson_usb::BosonCameraConfig& config,
-                                          uint32_t /* level */) { reconfigureCallback(config); });
+  reconfigure_server.setCallback([this](flir_boson_usb::BosonCameraConfig& config,
+                                        uint32_t /* level */) { reconfigureCallback(config); });
 
   pnh.param<std::string>("frame_id", frame_id, "boson_camera");
   pnh.param<std::string>("dev", dev_path, "/dev/video0");

@@ -23,6 +23,8 @@
 
 // C++ Includes
 #include <string>
+#include <thread>
+#include <mutex>
 
 // Linux system includes
 #include <fcntl.h>
@@ -114,7 +116,7 @@ class BosonCamera : public nodelet::Nodelet
     bool zoom_enable;
     SensorTypes sensor_type;
 
-    dynamic_reconfigure::Server<flir_boson_usb::BosonCameraConfig> m_reconfigure_server;
+    dynamic_reconfigure::Server<flir_boson_usb::BosonCameraConfig> reconfigure_server;
     std::mutex mutex;
     void reconfigureCallback(const flir_boson_usb::BosonCameraConfig& config);
     // Dynamic reconfigure parameters
