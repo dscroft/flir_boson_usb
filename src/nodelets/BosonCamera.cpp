@@ -50,7 +50,7 @@ void BosonCamera::onInit()
 
   bool exit = false;
   reconfigure_server.setCallback([this](flir_boson_usb::BosonCameraConfig& config,
-                                        uint32_t /* level */) { reconfigureCallback(config); });
+					uint32_t /* level */) { reconfigureCallback(config); }); // NOLINT
 
   pnh.param<std::string>("frame_id", frame_id, "boson_camera");
   pnh.param<std::string>("dev", dev_path, "/dev/video0");

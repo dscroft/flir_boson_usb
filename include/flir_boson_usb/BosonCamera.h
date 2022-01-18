@@ -23,8 +23,8 @@
 
 // C++ Includes
 #include <string>
-#include <thread>
-#include <mutex>
+#include <thread> // NOLINT [build/c++11]
+#include <mutex> // NOLINT [build/c++11]
 
 // Linux system includes
 #include <fcntl.h>
@@ -122,7 +122,6 @@ class BosonCamera : public nodelet::Nodelet
     // Dynamic reconfigure parameters
     int point_x, point_y;
     int max_temp_limit, min_temp_limit;
-
 };
 
 }  // namespace flir_boson_usb
