@@ -12,9 +12,14 @@ find_package(catkin REQUIRED
   sensor_msgs
   camera_info_manager
   roslint
+  dynamic_reconfigure
 )
 
 find_package(OpenCV REQUIRED)
+
+generate_dynamic_reconfigure_options(
+  cfg/BosonCamera.cfg
+)
 
 catkin_package(
   CATKIN_DEPENDS
@@ -23,6 +28,7 @@ catkin_package(
   cv_bridge
   nodelet
   sensor_msgs
+  dynamic_reconfigure
 )
 
 include_directories(

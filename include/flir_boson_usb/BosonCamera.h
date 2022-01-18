@@ -23,6 +23,8 @@
 
 // C++ Includes
 #include <string>
+#include <thread> // NOLINT [build/c++11]
+#include <mutex> // NOLINT [build/c++11]
 
 // Linux system includes
 #include <fcntl.h>
@@ -46,6 +48,10 @@
 
 #include <sensor_msgs/CameraInfo.h>
 #include <sensor_msgs/Image.h>
+
+// Dynamic Reconfigure
+#include <dynamic_reconfigure/server.h>
+#include "flir_boson_usb/BosonCameraConfig.h"
 
 namespace flir_boson_usb
 {
@@ -89,7 +95,7 @@ class BosonCamera : public nodelet::Nodelet
     sensor_msgs::ImagePtr pub_image, pub_image_8, pub_image_heatmap, pub_image_temp;
     ros::Timer capture_timer;
     int32_t width, height;
-    double max_temp, min_temp;
+    double max_temp, min_temp, ptr_temp;
     int32_t fd;
     int32_t i;
     struct v4l2_capability cap;
@@ -100,6 +106,7 @@ class BosonCamera : public nodelet::Nodelet
 
     cv::Mat thermal16, thermal16_linear, thermal8_linear, thermal8_heatmap, thermal8_temp,
             thermal16_linear_zoom, thermal_rgb_zoom, thermal_luma, thermal_rgb;
+    cv::Point temp_ptr;
 
     // Default Program options
     std::string frame_id, dev_path, camera_info_url,
@@ -108,6 +115,13 @@ class BosonCamera : public nodelet::Nodelet
     Encoding video_mode;
     bool zoom_enable;
     SensorTypes sensor_type;
+
+    dynamic_reconfigure::Server<flir_boson_usb::BosonCameraConfig> reconfigure_server;
+    std::mutex mutex;
+    void reconfigureCallback(const flir_boson_usb::BosonCameraConfig& config);
+    // Dynamic reconfigure parameters
+    int point_x, point_y;
+    int max_temp_limit, min_temp_limit;
 };
 
 }  // namespace flir_boson_usb

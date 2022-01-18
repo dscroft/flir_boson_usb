@@ -49,6 +49,8 @@ void BosonCamera::onInit()
   image_pub_temp = it->advertiseCamera("image_temp", 1);
 
   bool exit = false;
+  reconfigure_server.setCallback([this](flir_boson_usb::BosonCameraConfig& config,
+					uint32_t /* level */) { reconfigureCallback(config); }); // NOLINT
 
   pnh.param<std::string>("frame_id", frame_id, "boson_camera");
   pnh.param<std::string>("dev", dev_path, "/dev/video0");
@@ -138,7 +140,7 @@ void BosonCamera::agcBasicLinear(const Mat& input_16,
   // auxiliary variables for AGC calcultion
   unsigned int max1 = 0;         // 16 bits
   unsigned int min1 = 0xFFFF;    // 16 bits
-  unsigned int value1, value2, value3, value4;
+  unsigned int value1, value2, value3, value4, value5;
 
   // RUN a super basic AGC
   for (i = 0; i < height; i++)
@@ -159,10 +161,11 @@ void BosonCamera::agcBasicLinear(const Mat& input_16,
   *max_temp = max1 / 100. - 273.15;
   *min_temp = min1 / 100. - 273.15;
 
-  int max_temp_limit = 40;
-  int min_temp_limit = 20;
-  max1 = (max_temp_limit + 273.15) * 100;
-  min1 = (min_temp_limit + 273.15) * 100;
+  {
+    std::lock_guard<std::mutex> lock(mutex);
+    max1 = (max_temp_limit + 273.15) * 100;
+    min1 = (min_temp_limit + 273.15) * 100;
+  }
 
   for (int i = 0; i < height; i++)
   {
@@ -171,17 +174,18 @@ void BosonCamera::agcBasicLinear(const Mat& input_16,
       value1 = input_16.at<uchar>(i, j * 2 + 1) & 0xFF;     // High Byte
       value2 = input_16.at<uchar>(i, j * 2) & 0xFF;         // Low Byte
       value3 = (value1 << 8) + value2;
+      value5 = value3;
 
-      if (value3 > max1)
+      if (value5 > max1)
       {
-        value3 = max1;
+        value5 = max1;
       }
-      if (value3 < min1)
+      if (value5 < min1)
       {
-        value3 = min1;
+        value5 = min1;
       }
 
-      value4 = ((255 * (value3 - min1))) / (max1 - min1);
+      value4 = ((255 * (value5 - min1))) / (max1 - min1);
       output_8->at<uchar>(i, j) = static_cast<uint8_t>(value4);
       // output raw 16 bit image
       output_16->at<uint16_t>(i, j) = static_cast<uint16_t>(value3);
@@ -440,9 +444,9 @@ void BosonCamera::captureAndPublish(const ros::TimerEvent& evt)
       ci->header.stamp = pub_image_heatmap->header.stamp;
       image_pub_heatmap.publish(pub_image_heatmap, ci);
 
-      // put temperature info
+      // 8bit heatmap image with temperature info
       thermal8_temp = thermal8_heatmap.clone();
-      std::stringstream max_temp_ss, min_temp_ss;
+      std::stringstream max_temp_ss, min_temp_ss, ptr_temp_ss;
       max_temp_ss << std::fixed << std::setprecision(2) << max_temp;
       min_temp_ss << std::fixed << std::setprecision(2) << min_temp;
 
@@ -452,7 +456,20 @@ void BosonCamera::captureAndPublish(const ros::TimerEvent& evt)
                   cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 0, 0), 1);
       cv::putText(thermal8_temp, disp_min_temp, cv::Point(15, 30),
                   cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 0, 0), 1);
-      // 8bit image
+
+      // pointer temperature
+      {
+        std::lock_guard<std::mutex> lock(mutex);
+        temp_ptr = cv::Point(point_x, point_y);
+        ptr_temp = thermal16_linear.at<uint16_t>(point_x, point_y) / 100.0 - 273.15;
+      }
+      ptr_temp_ss << std::fixed << std::setprecision(2) << ptr_temp;
+      std::string disp_ptr_temp = "Ptr: " + ptr_temp_ss.str() + " deg";
+      cv::putText(thermal8_temp, disp_ptr_temp, cv::Point(15, 45),
+                  cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 0, 0), 1);
+      cv::circle(thermal8_temp, temp_ptr, 3, cv::Scalar(0, 0, 0), 1, cv::LINE_AA);
+      cv::circle(thermal8_temp, temp_ptr, 2, cv::Scalar(255, 255, 255), -1, cv::LINE_AA);
+
       cv_img.image = thermal8_temp;
       cv_img.header.stamp = ros::Time::now();
       cv_img.header.frame_id = frame_id;
@@ -491,4 +508,13 @@ void BosonCamera::captureAndPublish(const ros::TimerEvent& evt)
     ci->header.stamp = pub_image->header.stamp;
     image_pub.publish(pub_image, ci);
   }
+}
+
+void BosonCamera::reconfigureCallback(const flir_boson_usb::BosonCameraConfig& config)
+{
+  std::lock_guard<std::mutex> lock(mutex);
+  point_x = config.point_x;
+  point_y = config.point_y;
+  max_temp_limit = config.max_temp_limit;
+  min_temp_limit = config.min_temp_limit;
 }
