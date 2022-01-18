@@ -10,18 +10,12 @@
   <arg name="frame_rate" default="60.0"/>
 
   <!-- valid values are RAW16 or YUV -->
-  <!--
-  <arg name="video_mode" default="YUV"/>
-  -->
   <arg name="video_mode" default="RAW16"/>
 
   <!-- valid values are TRUE or FALSE -->
   <arg name="zoom_enable" default="FALSE"/>
 
   <!-- valid values are Boson_320 or Boson_640 -->
-  <!--
-  <arg name="sensor_type" default="Boson_640"/>
-  -->
   <arg name="sensor_type" default="Boson_320"/>
 
   <!-- location of the camera calibration file -->
