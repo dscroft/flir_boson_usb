@@ -48,6 +48,7 @@
 
 #include <sensor_msgs/CameraInfo.h>
 #include <sensor_msgs/Image.h>
+#include <sensor_msgs/Temperature.h>
 
 // Dynamic Reconfigure
 #include <dynamic_reconfigure/server.h>
@@ -93,6 +94,8 @@ class BosonCamera : public nodelet::Nodelet
     image_transport::CameraPublisher image_pub, image_pub_8, image_pub_heatmap, image_pub_temp;
     cv_bridge::CvImage cv_img;
     sensor_msgs::ImagePtr pub_image, pub_image_8, pub_image_heatmap, pub_image_temp;
+    ros::Publisher max_temp_pub, min_temp_pub, ptr_temp_pub;
+    sensor_msgs::Temperature max_temp_msg, min_temp_msg, ptr_temp_msg;
     ros::Timer capture_timer;
     int32_t width, height;
     double max_temp, min_temp, ptr_temp;

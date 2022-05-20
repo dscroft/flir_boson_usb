@@ -47,6 +47,9 @@ void BosonCamera::onInit()
   image_pub_8 = it->advertiseCamera("image8", 1);
   image_pub_heatmap = it->advertiseCamera("image_heatmap", 1);
   image_pub_temp = it->advertiseCamera("image_temp", 1);
+  max_temp_pub = nh.advertise<sensor_msgs::Temperature>("max_temp", 1);
+  min_temp_pub = nh.advertise<sensor_msgs::Temperature>("min_temp", 1);
+  ptr_temp_pub = nh.advertise<sensor_msgs::Temperature>("ptr_temp", 1);
 
   bool exit = false;
   reconfigure_server.setCallback([this](flir_boson_usb::BosonCameraConfig& config,
@@ -413,9 +416,11 @@ void BosonCamera::captureAndPublish(const ros::TimerEvent& evt)
         morphologyEx(gamma_corrected_image, top_hat_img, MORPH_TOPHAT, kernel);
       }
 
+      ros::Time now = ros::Time::now();
+
       // 16bit image
       cv_img.image = thermal16_linear;
-      cv_img.header.stamp = ros::Time::now();
+      cv_img.header.stamp = now;
       cv_img.header.frame_id = frame_id;
       cv_img.encoding = "16UC1";
       pub_image = cv_img.toImageMsg();
@@ -425,7 +430,7 @@ void BosonCamera::captureAndPublish(const ros::TimerEvent& evt)
 
       // 8bit image
       cv_img.image = thermal8_linear;
-      cv_img.header.stamp = ros::Time::now();
+      cv_img.header.stamp = now;
       cv_img.header.frame_id = frame_id;
       cv_img.encoding = "mono8";
       pub_image_8 = cv_img.toImageMsg();
@@ -436,7 +441,7 @@ void BosonCamera::captureAndPublish(const ros::TimerEvent& evt)
       cv::applyColorMap(thermal8_linear, thermal8_heatmap, cv::COLORMAP_JET);
       // 8bit heatmap image
       cv_img.image = thermal8_heatmap;
-      cv_img.header.stamp = ros::Time::now();
+      cv_img.header.stamp = now;
       cv_img.header.frame_id = frame_id;
       cv_img.encoding = "bgr8";
       pub_image_heatmap = cv_img.toImageMsg();
@@ -471,13 +476,24 @@ void BosonCamera::captureAndPublish(const ros::TimerEvent& evt)
       cv::circle(thermal8_temp, temp_ptr, 2, cv::Scalar(255, 255, 255), -1, cv::LINE_AA);
 
       cv_img.image = thermal8_temp;
-      cv_img.header.stamp = ros::Time::now();
+      cv_img.header.stamp = now;
       cv_img.header.frame_id = frame_id;
       cv_img.encoding = "bgr8";
       pub_image_temp = cv_img.toImageMsg();
 
       ci->header.stamp = pub_image_temp->header.stamp;
       image_pub_temp.publish(pub_image_temp, ci);
+
+      max_temp_msg.header.stamp = now;
+      min_temp_msg.header.stamp = now;
+      ptr_temp_msg.header.stamp = now;
+      max_temp_msg.temperature = max_temp;
+      min_temp_msg.temperature = min_temp;
+      ptr_temp_msg.temperature = ptr_temp;
+
+      max_temp_pub.publish(max_temp_msg);
+      min_temp_pub.publish(min_temp_msg);
+      ptr_temp_pub.publish(ptr_temp_msg);
     }
     else
     {
