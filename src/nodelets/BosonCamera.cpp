@@ -1,40 +1,36 @@
 /*
  * Copyright © 2019 AutonomouStuff, LLC
- * 
- * Permission is hereby granted, free of charge, to any person obtaining a copy of this
- * software and associated documentation files (the “Software”), to deal in the Software
- * without restriction, including without limitation the rights to use, copy, modify,
- * merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
- * permit persons to whom the Software is furnished to do so, subject to the following conditions:
- * 
- * The above copyright notice and this permission notice shall be included in all copies
- * or substantial portions of the Software.
- * 
- * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
- * INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
- * PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
- * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
- * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE
- * OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the “Software”), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 
-#include <pluginlib/class_list_macros.h>
 #include "flir_boson_usb/BosonCamera.h"
+#include <pluginlib/class_list_macros.h>
 
 PLUGINLIB_EXPORT_CLASS(flir_boson_usb::BosonCamera, nodelet::Nodelet)
 
 using namespace cv;
 using namespace flir_boson_usb;
 
-BosonCamera::BosonCamera() :
-  cv_img()
-{
-}
+BosonCamera::BosonCamera() : cv_img() {}
 
-BosonCamera::~BosonCamera()
-{
-  closeCamera();
-}
+BosonCamera::~BosonCamera() { closeCamera(); }
 
 void BosonCamera::onInit()
 {
@@ -42,7 +38,8 @@ void BosonCamera::onInit()
   pnh = getPrivateNodeHandle();
   camera_info = std::shared_ptr<camera_info_manager::CameraInfoManager>(
       new camera_info_manager::CameraInfoManager(nh));
-  it = std::shared_ptr<image_transport::ImageTransport>(new image_transport::ImageTransport(nh));
+  it = std::shared_ptr<image_transport::ImageTransport>(
+      new image_transport::ImageTransport(nh));
   image_pub = it->advertiseCamera("image_raw", 1);
   image_pub_8 = it->advertiseCamera("image8", 1);
   image_pub_heatmap = it->advertiseCamera("image_heatmap", 1);
@@ -52,8 +49,11 @@ void BosonCamera::onInit()
   ptr_temp_pub = nh.advertise<sensor_msgs::Temperature>("ptr_temp", 1);
 
   bool exit = false;
-  reconfigure_server.setCallback([this](flir_boson_usb::BosonCameraConfig& config,
-					uint32_t /* level */) { reconfigureCallback(config); }); // NOLINT
+  reconfigure_server.setCallback(
+      [this](flir_boson_usb::BosonCameraConfig &config, uint32_t /* level */)
+      {
+        reconfigureCallback(config);
+      }); // NOLINT
 
   pnh.param<std::string>("frame_id", frame_id, "boson_camera");
   pnh.param<std::string>("dev", dev_path, "/dev/video0");
@@ -67,9 +67,11 @@ void BosonCamera::onInit()
   ROS_INFO("flir_boson_usb - Got dev: %s.", dev_path.c_str());
   ROS_INFO("flir_boson_usb - Got frame rate: %f.", frame_rate);
   ROS_INFO("flir_boson_usb - Got video mode: %s.", video_mode_str.c_str());
-  ROS_INFO("flir_boson_usb - Got zoom enable: %s.", (zoom_enable ? "true" : "false"));
+  ROS_INFO("flir_boson_usb - Got zoom enable: %s.",
+           (zoom_enable ? "true" : "false"));
   ROS_INFO("flir_boson_usb - Got sensor type: %s.", sensor_type_str.c_str());
-  ROS_INFO("flir_boson_usb - Got camera_info_url: %s.", camera_info_url.c_str());
+  ROS_INFO("flir_boson_usb - Got camera_info_url: %s.",
+           camera_info_url.c_str());
 
   if (video_mode_str == "RAW16")
   {
@@ -85,14 +87,12 @@ void BosonCamera::onInit()
     ROS_ERROR("flir_boson_usb - Invalid video_mode value provided. Exiting.");
   }
 
-  if (sensor_type_str == "Boson_320" ||
-      sensor_type_str == "boson_320")
+  if (sensor_type_str == "Boson_320" || sensor_type_str == "boson_320")
   {
     sensor_type = Boson320;
     camera_info->setCameraName("Boson320");
   }
-  else if (sensor_type_str == "Boson_640" ||
-           sensor_type_str == "boson_640")
+  else if (sensor_type_str == "Boson_640" || sensor_type_str == "boson_640")
   {
     sensor_type = Boson640;
     camera_info->setCameraName("Boson640");
@@ -109,11 +109,14 @@ void BosonCamera::onInit()
   }
   else
   {
-    ROS_INFO("flir_boson_usb - camera_info_url could not be validated. Publishing with unconfigured camera.");
+    ROS_INFO("flir_boson_usb - camera_info_url could not be validated. "
+             "Publishing with unconfigured camera.");
   }
 
   if (!exit)
+  {
     exit = openCamera() ? exit : true;
+  }
 
   if (exit)
   {
@@ -122,27 +125,25 @@ void BosonCamera::onInit()
   }
   else
   {
-    capture_timer = nh.createTimer(ros::Duration(1.0 / frame_rate),
-        boost::bind(&BosonCamera::captureAndPublish, this, _1));
+    capture_timer =
+        nh.createTimer(ros::Duration(1.0 / frame_rate),
+                       boost::bind(&BosonCamera::captureAndPublish, this, _1));
   }
 }
 
 // AGC Sample ONE: Linear from min to max.
 // Input is a MATRIX (height x width) of 16bits. (OpenCV mat)
 // Output is a MATRIX (height x width) of 8 bits (OpenCV mat)
-void BosonCamera::agcBasicLinear(const Mat& input_16,
-                                 Mat* output_8,
-                                 Mat* output_16,
-                                 const int& height,
-                                 const int& width,
-                                 double* max_temp,
-                                 double* min_temp)
+void BosonCamera::agcBasicLinear(const Mat &input_16, Mat *output_8,
+                                 Mat *output_16, const int &height,
+                                 const int &width, double *max_temp,
+                                 double *min_temp)
 {
   int i, j;  // aux variables
 
   // auxiliary variables for AGC calcultion
-  unsigned int max1 = 0;         // 16 bits
-  unsigned int min1 = 0xFFFF;    // 16 bits
+  unsigned int max1 = 0;       // 16 bits
+  unsigned int min1 = 0xFFFF;  // 16 bits
   unsigned int value1, value2, value3, value4, value5;
 
   // RUN a super basic AGC
@@ -164,6 +165,14 @@ void BosonCamera::agcBasicLinear(const Mat& input_16,
   *max_temp = max1 / 100. - 273.15;
   *min_temp = min1 / 100. - 273.15;
 
+  if (max_temp_limit < min_temp_limit)
+  {
+    std::stringstream err_msg_ss;
+    err_msg_ss << "max_temp_limit should be larger than min_temp_limit ";
+    err_msg_ss << "(max_temp_limit: " << max_temp_limit
+               << ", min_temp_limit: " << min_temp_limit << ")";
+    throw std::range_error(err_msg_ss.str());
+  }
   {
     std::lock_guard<std::mutex> lock(mutex);
     max1 = (max_temp_limit + 273.15) * 100;
@@ -174,8 +183,8 @@ void BosonCamera::agcBasicLinear(const Mat& input_16,
   {
     for (int j = 0; j < width; j++)
     {
-      value1 = input_16.at<uchar>(i, j * 2 + 1) & 0xFF;     // High Byte
-      value2 = input_16.at<uchar>(i, j * 2) & 0xFF;         // Low Byte
+      value1 = input_16.at<uchar>(i, j * 2 + 1) & 0xFF;  // High Byte
+      value2 = input_16.at<uchar>(i, j * 2) & 0xFF;      // Low Byte
       value3 = (value1 << 8) + value2;
       value5 = value3;
 
@@ -208,13 +217,15 @@ bool BosonCamera::openCamera()
   // Check VideoCapture mode is available
   if (ioctl(fd, VIDIOC_QUERYCAP, &cap) < 0)
   {
-    ROS_ERROR("flir_boson_usb - ERROR : VIDIOC_QUERYCAP. Video Capture is not available.");
+    ROS_ERROR("flir_boson_usb - ERROR : VIDIOC_QUERYCAP. Video Capture is not "
+              "available.");
     return false;
   }
 
   if (!(cap.capabilities & V4L2_CAP_VIDEO_CAPTURE))
   {
-    ROS_ERROR("flir_boson_usb - The device does not handle single-planar video capture.");
+    ROS_ERROR("flir_boson_usb - The device does not handle single-planar video "
+              "capture.");
     return false;
   }
 
@@ -229,23 +240,24 @@ bool BosonCamera::openCamera()
     // Select the frame SIZE (will depend on the type of sensor)
     switch (sensor_type)
     {
-      case Boson320:  // Boson320
-        width = 320;
-        height = 256;
-        break;
-      case Boson640:  // Boson640
-        width = 640;
-        height = 512;
-        break;
-      default:  // Boson320
-        width = 320;
-        height = 256;
-        break;
+    case Boson320:  // Boson320
+      width = 320;
+      height = 256;
+      break;
+    case Boson640:  // Boson640
+      width = 640;
+      height = 512;
+      break;
+    default:  // Boson320
+      width = 320;
+      height = 256;
+      break;
     }
   }
   else  // 8- bits is always 640x512 (even for a Boson 320)
   {
-    format.fmt.pix.pixelformat = V4L2_PIX_FMT_YVU420;  // thermal, works   LUMA, full Cr, full Cb
+    format.fmt.pix.pixelformat =
+        V4L2_PIX_FMT_YVU420;  // thermal, works   LUMA, full Cr, full Cb
     width = 640;
     height = 512;
   }
@@ -258,7 +270,8 @@ bool BosonCamera::openCamera()
   // request desired FORMAT
   if (ioctl(fd, VIDIOC_S_FMT, &format) < 0)
   {
-    ROS_ERROR("flir_boson_usb - VIDIOC_S_FMT error. The camera does not support the requested video format.");
+    ROS_ERROR("flir_boson_usb - VIDIOC_S_FMT error. The camera does not "
+              "support the requested video format.");
     return false;
   }
 
@@ -270,18 +283,19 @@ bool BosonCamera::openCamera()
   struct v4l2_requestbuffers bufrequest;
   bufrequest.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   bufrequest.memory = V4L2_MEMORY_MMAP;
-  bufrequest.count = 1;   // we are asking for one buffer
+  bufrequest.count = 1;  // we are asking for one buffer
 
   if (ioctl(fd, VIDIOC_REQBUFS, &bufrequest) < 0)
   {
-    ROS_ERROR("flir_boson_usb - VIDIOC_REQBUFS error. The camera failed to allocate a buffer.");
+    ROS_ERROR("flir_boson_usb - VIDIOC_REQBUFS error. The camera failed to "
+              "allocate a buffer.");
     return false;
   }
 
   // Now that the device knows how to provide its data,
   // we need to ask it about the amount of memory it needs,
-  // and allocate it. This information is retrieved using the VIDIOC_QUERYBUF call,
-  // and its v4l2_buffer structure.
+  // and allocate it. This information is retrieved using the VIDIOC_QUERYBUF
+  // call, and its v4l2_buffer structure.
 
   memset(&bufferinfo, 0, sizeof(bufferinfo));
 
@@ -291,17 +305,20 @@ bool BosonCamera::openCamera()
 
   if (ioctl(fd, VIDIOC_QUERYBUF, &bufferinfo) < 0)
   {
-    ROS_ERROR("flir_boson_usb - VIDIOC_QUERYBUF error. Failed to retreive buffer information.");
+    ROS_ERROR("flir_boson_usb - VIDIOC_QUERYBUF error. Failed to retreive "
+              "buffer information.");
     return false;
   }
 
-  // map fd+offset into a process location (kernel will decide due to our NULL). length and
-  // properties are also passed
-  buffer_start = mmap(NULL, bufferinfo.length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, bufferinfo.m.offset);
+  // map fd+offset into a process location (kernel will decide due to our NULL).
+  // length and properties are also passed
+  buffer_start = mmap(NULL, bufferinfo.length, PROT_READ | PROT_WRITE,
+                      MAP_SHARED, fd, bufferinfo.m.offset);
 
   if (buffer_start == MAP_FAILED)
   {
-    ROS_ERROR("flir_boson_usb - mmap error. Failed to create a memory map for buffer.");
+    ROS_ERROR("flir_boson_usb - mmap error. Failed to create a memory map for "
+              "buffer.");
     return false;
   }
 
@@ -312,14 +329,16 @@ bool BosonCamera::openCamera()
   int type = bufferinfo.type;
   if (ioctl(fd, VIDIOC_STREAMON, &type) < 0)
   {
-    ROS_ERROR("flir_boson_usb - VIDIOC_STREAMON error. Failed to activate streaming on the camera.");
+    ROS_ERROR("flir_boson_usb - VIDIOC_STREAMON error. Failed to activate "
+              "streaming on the camera.");
     return false;
   }
 
   // Declarations for RAW16 representation
   // Will be used in case we are reading RAW16 format
   // Boson320 , Boson 640
-  // OpenCV input buffer  : Asking for all info: two bytes per pixel (RAW16)  RAW16 mode`
+  // OpenCV input buffer  : Asking for all info: two bytes per pixel (RAW16)
+  // RAW16 mode`
   thermal16 = Mat(height, width, CV_16U, buffer_start);
   // OpenCV output buffer : Data used to display the video
   thermal8_linear = Mat(height, width, CV_8U, 1);
@@ -329,13 +348,14 @@ bool BosonCamera::openCamera()
   // Declarations for 8bits YCbCr mode
   // Will be used in case we are reading YUV format
   // Boson320, 640 :  4:2:0
-  int luma_height = height+height/2;
+  int luma_height = height + height / 2;
   int luma_width = width;
   int color_space = CV_8UC1;
 
   // Declarations for Zoom representation
   // Will be used or not depending on program arguments
-  thermal_luma = Mat(luma_height, luma_width,  color_space, buffer_start);  // OpenCV input buffer
+  thermal_luma = Mat(luma_height, luma_width, color_space,
+                     buffer_start);  // OpenCV input buffer
   // OpenCV output buffer , BGR -> Three color spaces :
   // (640 - 640 - 640 : p11 p21 p31 .... / p12 p22 p32 ..../ p13 p23 p33 ...)
   thermal_rgb = Mat(height, width, CV_8UC3, 1);
@@ -348,9 +368,10 @@ bool BosonCamera::closeCamera()
   // Finish loop. Exiting.
   // Deactivate streaming
   int type = bufferinfo.type;
-  if (ioctl(fd, VIDIOC_STREAMOFF, &type) < 0 )
+  if (ioctl(fd, VIDIOC_STREAMOFF, &type) < 0)
   {
-    ROS_ERROR("flir_boson_usb - VIDIOC_STREAMOFF error. Failed to disable streaming on the camera.");
+    ROS_ERROR("flir_boson_usb - VIDIOC_STREAMOFF error. Failed to disable "
+              "streaming on the camera.");
     return false;
   };
 
@@ -359,26 +380,28 @@ bool BosonCamera::closeCamera()
   return true;
 }
 
-void BosonCamera::captureAndPublish(const ros::TimerEvent& evt)
+void BosonCamera::captureAndPublish(const ros::TimerEvent &evt)
 {
   Size size(640, 512);
 
-  sensor_msgs::CameraInfoPtr
-    ci(new sensor_msgs::CameraInfo(camera_info->getCameraInfo()));
+  sensor_msgs::CameraInfoPtr ci(
+      new sensor_msgs::CameraInfo(camera_info->getCameraInfo()));
 
   ci->header.frame_id = frame_id;
 
   // Put the buffer in the incoming queue.
   if (ioctl(fd, VIDIOC_QBUF, &bufferinfo) < 0)
   {
-    ROS_ERROR("flir_boson_usb - VIDIOC_QBUF error. Failed to queue the image buffer.");
+    ROS_ERROR("flir_boson_usb - VIDIOC_QBUF error. Failed to queue the image "
+              "buffer.");
     return;
   }
 
   // The buffer's waiting in the outgoing queue.
   if (ioctl(fd, VIDIOC_DQBUF, &bufferinfo) < 0)
   {
-    ROS_ERROR("flir_boson_usb - VIDIOC_DQBUF error. Failed to dequeue the image buffer.");
+    ROS_ERROR("flir_boson_usb - VIDIOC_DQBUF error. Failed to dequeue the "
+              "image buffer.");
     return;
   }
 
@@ -386,8 +409,15 @@ void BosonCamera::captureAndPublish(const ros::TimerEvent& evt)
   {
     // -----------------------------
     // RAW16 DATA
-    agcBasicLinear(thermal16, &thermal8_linear, &thermal16_linear, height, width,
-                   &max_temp, &min_temp);
+    try
+    {
+      agcBasicLinear(thermal16, &thermal8_linear, &thermal16_linear, height,
+                     width, &max_temp, &min_temp);
+    }
+    catch (std::range_error &e)
+    {
+      ROS_ERROR_THROTTLE(1, e.what());
+    }
 
     // Display thermal after 16-bits AGC... will display an image
     if (!zoom_enable)
@@ -395,24 +425,30 @@ void BosonCamera::captureAndPublish(const ros::TimerEvent& evt)
       bool use_filter = false;
       if (use_filter)
       {
-        // Threshold using Otsu's method, then use the result as a mask on the original image
+        // Threshold using Otsu's method, then use the result as a mask on the
+        // original image
         Mat mask_mat, masked_img;
-        threshold(thermal8_linear, mask_mat, 0, 255, CV_THRESH_BINARY|CV_THRESH_OTSU);
+        threshold(thermal8_linear, mask_mat, 0, 255,
+                  CV_THRESH_BINARY | CV_THRESH_OTSU);
         thermal8_linear.copyTo(masked_img, mask_mat);
 
-        // Normalize the pixel values to the range [0, 1] then raise to power (gamma). Then convert back for display.
-        Mat d_out_img, norm_image, d_norm_image, gamma_corrected_image, d_gamma_corrected_image;
+        // Normalize the pixel values to the range [0, 1] then raise to power
+        // (gamma). Then convert back for display.
+        Mat d_out_img, norm_image, d_norm_image, gamma_corrected_image,
+            d_gamma_corrected_image;
         double gamma = 0.8;
         masked_img.convertTo(d_out_img, CV_64FC1);
         normalize(d_out_img, d_norm_image, 0, 1, NORM_MINMAX, CV_64FC1);
         pow(d_out_img, gamma, d_gamma_corrected_image);
         d_gamma_corrected_image.convertTo(gamma_corrected_image, CV_8UC1);
-        normalize(gamma_corrected_image, gamma_corrected_image, 0, 255, NORM_MINMAX, CV_8UC1);
+        normalize(gamma_corrected_image, gamma_corrected_image, 0, 255,
+                  NORM_MINMAX, CV_8UC1);
 
         // Apply top hat filter
         int erosion_size = 5;
-        Mat top_hat_img, kernel = getStructuringElement(MORPH_ELLIPSE,
-            Size(2 * erosion_size + 1, 2 * erosion_size + 1));
+        Mat top_hat_img, kernel = getStructuringElement(
+                             MORPH_ELLIPSE,
+                             Size(2 * erosion_size + 1, 2 * erosion_size + 1));
         morphologyEx(gamma_corrected_image, top_hat_img, MORPH_TOPHAT, kernel);
       }
 
@@ -466,14 +502,17 @@ void BosonCamera::captureAndPublish(const ros::TimerEvent& evt)
       {
         std::lock_guard<std::mutex> lock(mutex);
         temp_ptr = cv::Point(point_x, point_y);
-        ptr_temp = thermal16_linear.at<uint16_t>(point_y, point_x) / 100.0 - 273.15;
+        ptr_temp =
+            thermal16_linear.at<uint16_t>(point_y, point_x) / 100.0 - 273.15;
       }
       ptr_temp_ss << std::fixed << std::setprecision(2) << ptr_temp;
       std::string disp_ptr_temp = "Ptr: " + ptr_temp_ss.str() + " deg";
       cv::putText(thermal8_temp, disp_ptr_temp, cv::Point(15, 45),
                   cv::FONT_HERSHEY_SIMPLEX, 0.4, cv::Scalar(0, 0, 0), 1);
-      cv::circle(thermal8_temp, temp_ptr, 3, cv::Scalar(0, 0, 0), 1, cv::LINE_AA);
-      cv::circle(thermal8_temp, temp_ptr, 2, cv::Scalar(255, 255, 255), -1, cv::LINE_AA);
+      cv::circle(thermal8_temp, temp_ptr, 3, cv::Scalar(0, 0, 0), 1,
+                 cv::LINE_AA);
+      cv::circle(thermal8_temp, temp_ptr, 2, cv::Scalar(255, 255, 255), -1,
+                 cv::LINE_AA);
 
       cv_img.image = thermal8_temp;
       cv_img.header.stamp = now;
@@ -526,7 +565,8 @@ void BosonCamera::captureAndPublish(const ros::TimerEvent& evt)
   }
 }
 
-void BosonCamera::reconfigureCallback(const flir_boson_usb::BosonCameraConfig& config)
+void BosonCamera::reconfigureCallback(
+    const flir_boson_usb::BosonCameraConfig &config)
 {
   std::lock_guard<std::mutex> lock(mutex);
   point_x = config.point_x;
