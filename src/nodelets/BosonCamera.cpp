@@ -164,6 +164,13 @@ void BosonCamera::agcBasicLinear(const Mat& input_16,
   *max_temp = max1 / 100. - 273.15;
   *min_temp = min1 / 100. - 273.15;
 
+  if (max_temp_limit < min_temp_limit)
+  {
+    std::stringstream err_msg_ss;
+    err_msg_ss << "max_temp_limit should be larger than min_temp_limit ";
+    err_msg_ss << "(max_temp_limit: " << max_temp_limit << ", min_temp_limit: " << min_temp_limit << ")";
+    throw std::range_error(err_msg_ss.str());
+  }
   {
     std::lock_guard<std::mutex> lock(mutex);
     max1 = (max_temp_limit + 273.15) * 100;
@@ -386,8 +393,15 @@ void BosonCamera::captureAndPublish(const ros::TimerEvent& evt)
   {
     // -----------------------------
     // RAW16 DATA
-    agcBasicLinear(thermal16, &thermal8_linear, &thermal16_linear, height, width,
-                   &max_temp, &min_temp);
+    try
+    {
+      agcBasicLinear(thermal16, &thermal8_linear, &thermal16_linear, height, width,
+                     &max_temp, &min_temp);
+    }
+    catch(std::range_error& e)
+    {
+      ROS_ERROR_THROTTLE(1, e.what());
+    }  
 
     // Display thermal after 16-bits AGC... will display an image
     if (!zoom_enable)
