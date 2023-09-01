@@ -416,7 +416,7 @@ void BosonCamera::captureAndPublish(const ros::TimerEvent &evt)
     }
     catch (std::range_error &e)
     {
-      ROS_ERROR_THROTTLE(1, e.what());
+      ROS_ERROR_THROTTLE(1, "%s", e.what());
     }
 
     // Display thermal after 16-bits AGC... will display an image
