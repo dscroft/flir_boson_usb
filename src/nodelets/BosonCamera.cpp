@@ -478,10 +478,11 @@ void BosonCamera::captureAndPublish(const ros::TimerEvent &evt)
       // 8bit image (auto range)
       double min, max;
       minMaxLoc(thermal8_linear, &min, &max);
-      normalize(thermal8_linear, cv_img.image, min, max, NORM_MINMAX, CV_8UC1);
+      Mat thermal8_norm = (thermal8_linear - min) * (255 - 0) / (max - min);;
+      cv_img.image = thermal8_norm;
       cv_img.header.stamp = now;
       cv_img.header.frame_id = frame_id;
-      cv_img.encoding = "mono8_norm";
+      cv_img.encoding = "mono8";
       pub_image_8_norm = cv_img.toImageMsg();
 
       ci->header.stamp = pub_image_8_norm->header.stamp;
