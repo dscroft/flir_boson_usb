@@ -91,9 +91,9 @@ class BosonCamera : public nodelet::Nodelet
     ros::NodeHandle nh, pnh;
     std::shared_ptr<camera_info_manager::CameraInfoManager> camera_info;
     std::shared_ptr<image_transport::ImageTransport> it;
-    image_transport::CameraPublisher image_pub, image_pub_8, image_pub_heatmap, image_pub_temp;
+    image_transport::CameraPublisher image_pub, image_pub_8, image_pub_8_norm, image_pub_heatmap, image_pub_temp;
     cv_bridge::CvImage cv_img;
-    sensor_msgs::ImagePtr pub_image, pub_image_8, pub_image_heatmap, pub_image_temp;
+    sensor_msgs::ImagePtr pub_image, pub_image_8, pub_image_8_norm, pub_image_heatmap, pub_image_temp;
     ros::Publisher max_temp_pub, min_temp_pub, ptr_temp_pub;
     sensor_msgs::Temperature max_temp_msg, min_temp_msg, ptr_temp_msg;
     ros::Timer capture_timer;
