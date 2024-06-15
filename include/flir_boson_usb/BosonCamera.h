@@ -108,7 +108,7 @@ class BosonCamera : public nodelet::Nodelet
     void* buffer_start;
 
     cv::Mat thermal16, thermal16_linear, thermal8_linear, thermal8_heatmap, thermal8_temp,
-            thermal16_linear_zoom, thermal_rgb_zoom, thermal_luma, thermal_rgb;
+            thermal8_norm, thermal16_linear_zoom, thermal_rgb_zoom, thermal_luma, thermal_rgb;
     cv::Point temp_ptr;
 
     // Default Program options
