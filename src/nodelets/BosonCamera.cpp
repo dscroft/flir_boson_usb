@@ -42,6 +42,7 @@ void BosonCamera::onInit()
       new image_transport::ImageTransport(nh));
   image_pub = it->advertiseCamera("image_raw", 1);
   image_pub_8 = it->advertiseCamera("image8", 1);
+  image_pub_8_norm = it->advertiseCamera("image8_norm", 1);
   image_pub_heatmap = it->advertiseCamera("image_heatmap", 1);
   image_pub_temp = it->advertiseCamera("image_temp", 1);
   max_temp_pub = nh.advertise<sensor_msgs::Temperature>("max_temp", 1);
@@ -342,6 +343,7 @@ bool BosonCamera::openCamera()
   thermal16 = Mat(height, width, CV_16U, buffer_start);
   // OpenCV output buffer : Data used to display the video
   thermal8_linear = Mat(height, width, CV_8U, 1);
+  thermal8_norm = Mat(height, width, CV_8U, 1);
   thermal8_heatmap = Mat(height, width, CV_8UC3, 1);
   thermal16_linear = Mat(height, width, CV_16U, 1);
 
@@ -473,6 +475,26 @@ void BosonCamera::captureAndPublish(const ros::TimerEvent &evt)
 
       ci->header.stamp = pub_image_8->header.stamp;
       image_pub_8.publish(pub_image_8, ci);
+
+      // 8bit image (auto range)
+      double min, max;
+      minMaxLoc(thermal8_linear, &min, &max);
+      if ((max - min) != 0)
+      {
+        thermal8_norm = (thermal8_linear - min) * (255 - 0) / (max - min);
+      }
+      else
+      {
+        thermal8_norm = thermal8_linear;
+      }
+      cv_img.image = thermal8_norm;
+      cv_img.header.stamp = now;
+      cv_img.header.frame_id = frame_id;
+      cv_img.encoding = "mono8";
+      pub_image_8_norm = cv_img.toImageMsg();
+
+      ci->header.stamp = pub_image_8_norm->header.stamp;
+      image_pub_8_norm.publish(pub_image_8_norm, ci);
 
       cv::applyColorMap(thermal8_linear, thermal8_heatmap, cv::COLORMAP_JET);
       // 8bit heatmap image
