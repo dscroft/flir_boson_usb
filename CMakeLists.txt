@@ -1,88 +1,68 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.8)
 project(flir_boson_usb)
 
-add_compile_options(-std=c++11)
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
 
-find_package(catkin REQUIRED
-  COMPONENTS
-  roscpp
-  nodelet
-  cv_bridge
-  image_transport
-  sensor_msgs
-  camera_info_manager
-  roslint
-  dynamic_reconfigure
-)
-
+# find dependencies
+find_package(ament_cmake_auto REQUIRED)
+ament_auto_find_build_dependencies()
+# uncomment the following section in order to fill in
+# further dependencies manually.
+# find_package(<dependency> REQUIRED)
 find_package(OpenCV REQUIRED)
-
-generate_dynamic_reconfigure_options(
-  cfg/BosonCamera.cfg
-)
-
-catkin_package(
-  CATKIN_DEPENDS
-  camera_info_manager
-  image_transport
-  cv_bridge
-  nodelet
-  sensor_msgs
-  dynamic_reconfigure
-)
+#find_package(PCL REQUIRED)
 
 include_directories(
-  include
+  include  
   ${OpenCV_INCLUDE_DIRS}
-  ${catkin_INCLUDE_DIRS}
+#  ${PCL_INCLUDE_DIRS}
 )
 
-add_executable(${PROJECT_NAME}_node
+link_directories(
+  ${OpenCV_LIBRARY_DIRS}
+#  ${PCL_LIBRARY_DIRS}
+)
+
+#add_definitions(${PCL_DEFINITIONS})
+
+# bounding component
+ament_auto_add_library(flir_boson_usb_component SHARED
+  src/flir_boson_usb_component.cpp 
+)
+target_link_libraries(flir_boson_usb_component
+  ${OpenCV_LIBRARIES}
+)
+rclcpp_components_register_nodes(flir_boson_usb_component
+  "flir_boson_component::BosonCamera"
+)
+ament_auto_add_executable(flir_boson_usb_node
   src/flir_boson_usb_node.cpp
 )
 
-add_dependencies(${PROJECT_NAME}_node
-  ${${PROJECT_NAME}_EXPORTED_TARGETS}
-  ${catkin_EXPORTED_TARGETS}
-)
-
-target_link_libraries(${PROJECT_NAME}_node
+add_executable(demo src/demo.cpp)
+target_link_libraries(demo
   ${OpenCV_LIBRARIES}
-  ${catkin_LIBRARIES}
 )
 
-add_library(BosonCamera
-  src/nodelets/BosonCamera.cpp
-)
 
-add_dependencies(BosonCamera
-  ${${PROJECT_NAME}_EXPORTED_TARGETS}
-  ${catkin_EXPORTED_TARGETS}
-)
-
-target_link_libraries(BosonCamera
-  ${OpenCV_LIBRARIES}
-  ${catkin_LIBRARIES}
-)
-
-set(ROSLINT_CPP_OPTS "--filter=-runtime/threadsafe_fn,-build/namespaces,-build/include_what_you_use")
-roslint_cpp()
-
-install(TARGETS ${PROJECT_NAME}_node BosonCamera
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
-
+# Install launch files.
 install(DIRECTORY
   launch
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+  DESTINATION share/${PROJECT_NAME}/
 )
 
-install(FILES nodelet_plugins.xml
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-)
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  # the following line skips the linter which checks for copyrights
+  # comment the line when a copyright and license is added to all source files
+  set(ament_cmake_copyright_FOUND TRUE)
+  # the following line skips cpplint (only works in a git repo)
+  # comment the line when this package is in a git repo and when
+  # a copyright and license is added to all source files
+  set(ament_cmake_cpplint_FOUND TRUE)
+  ament_lint_auto_find_test_dependencies()
+endif()
 
-# if(TARGET ${PROJECT_NAME}-test)
-#   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
-# endif()
+ament_auto_package()

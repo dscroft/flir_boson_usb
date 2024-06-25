@@ -18,7 +18,7 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <string>
+/*#include <string>
 
 // ROS Includes
 #include <ros/ros.h>
@@ -33,5 +33,21 @@ int main(int argc, char** argv)
   std::string nodelet_name = ros::this_node::getName();
   nodelet.load(nodelet_name, "flir_boson_usb/BosonCamera", remap, nargv);
   ros::spin();
+  return 0;
+}*/
+
+#include <rclcpp/rclcpp.hpp>
+
+#include <memory>
+
+#include "flir_boson_usb_component.hpp"
+
+int main(int argc, char * argv[])
+{
+  rclcpp::init(argc, argv);
+  rclcpp::NodeOptions options;
+  options.use_intra_process_comms(true);
+  rclcpp::spin(std::make_shared<flir_boson_component::Component>(options));
+  rclcpp::shutdown();
   return 0;
 }
