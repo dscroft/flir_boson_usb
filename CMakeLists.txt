@@ -25,25 +25,44 @@ link_directories(
 #  ${PCL_LIBRARY_DIRS}
 )
 
-#add_definitions(${PCL_DEFINITIONS})
+# add boson library
+add_library(bosoncamera 
+  SHARED
+  src/BosonCamera.cpp
+)
+target_include_directories(bosoncamera
+  PUBLIC
+  include
+)
+target_link_libraries(bosoncamera
+  ${OpenCV_LIBRARIES}
+)
 
 # bounding component
-ament_auto_add_library(flir_boson_usb_component SHARED
-  src/flir_boson_usb_component.cpp 
+#ament_auto_add_library(flir_boson_usb_component SHARED
+#  src/flir_boson_usb_component.cpp 
+#)
+#target_link_libraries(flir_boson_usb_component
+#  bosoncamera
+#)
+#rclcpp_components_register_nodes(flir_boson_usb_component
+#  "flir_boson_component::BosonCamera"
+#)
+#ament_auto_add_executable(flir_boson_usb_node
+#  src/flir_boson_usb_node.cpp
+#)
+
+ament_auto_add_executable(BosonLifeCycle
+  src/BosonLifeCycle.cpp
 )
-target_link_libraries(flir_boson_usb_component
-  ${OpenCV_LIBRARIES}
-)
-rclcpp_components_register_nodes(flir_boson_usb_component
-  "flir_boson_component::BosonCamera"
-)
-ament_auto_add_executable(flir_boson_usb_node
-  src/flir_boson_usb_node.cpp
+target_link_libraries(BosonLifeCycle
+  bosoncamera
 )
 
+# demo program
 add_executable(demo src/demo.cpp)
 target_link_libraries(demo
-  ${OpenCV_LIBRARIES}
+  bosoncamera
 )
 
 
@@ -51,6 +70,13 @@ target_link_libraries(demo
 install(DIRECTORY
   launch
   DESTINATION share/${PROJECT_NAME}/
+)
+
+install(TARGETS
+  bosoncamera
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION lib/${PROJECT_NAME}
 )
 
 if(BUILD_TESTING)

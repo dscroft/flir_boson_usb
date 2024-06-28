@@ -58,12 +58,12 @@ int height;
 
 /* ---------------------------- Main Function ---------------------------------------*/
 // ENTRY POINT
-int main(int argc, char** argv )
+int main()
 {
-    const std::string video = "/dev/video0";
+    const std::string video = "/dev/video2";
 
     BosonCamera camera;
-    camera.init( video, Sensor_Types::Boson320, Video_Mode::RAW16 );
+    camera.init( video, Sensor_Types::Boson640, Video_Mode::RAW16 );
 
 	// Reaad frame, do AGC, paint frame
 	for (;;) 

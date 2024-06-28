@@ -92,127 +92,12 @@ private:
     Video_Mode video_mode;
     struct v4l2_buffer bufferinfo;
 
-    void _open_device( const std::string video)
-    {
-        if((fd = open(video.c_str(), O_RDWR)) < 0)
-        {
-            throw std::logic_error( "Error : OPEN. Invalid Video Device" );
-        }
-
-        // Check VideoCapture mode is available
-        if(ioctl(fd, VIDIOC_QUERYCAP, &cap) < 0)
-        {
-            throw std::logic_error( "ERROR : VIDIOC_QUERYCAP. Video Capture is not available" );
-        }
-
-        if(!(cap.capabilities & V4L2_CAP_VIDEO_CAPTURE))
-        {
-            throw std::logic_error( "The device does not handle single-planar video capture." );
-        }
-    }
-
-    void _set_format( Sensor_Types my_thermal )
-    {
-        struct v4l2_format format;
-        memset(&format, 0, sizeof(format));
-
-        // Common varibles
-        format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-        format.fmt.pix.width = width;
-        format.fmt.pix.height = height;
-        
-        // Two different FORMAT modes, 8 bits vs RAW16
-        if( video_mode == RAW16 ) 
-        {
-            // I am requiring thermal 16 bits mode
-            format.fmt.pix.pixelformat = V4L2_PIX_FMT_Y16;
-
-            // Select the frame SIZE (will depend on the type of sensor)
-            switch (my_thermal) 
-            {
-                case Boson640:  // Boson640
-                    width=640;
-                    height=512;
-                    break;
-                default:  // Boson320
-                    width=320;
-                    height=256;
-                    break;
-            }
-        } 
-        else 
-        { // 8- bits is always 640x512 (even for a Boson 320)
-            width = 640;
-            height = 512;
-        }
-
-        // request desired FORMAT
-        if(ioctl(fd, VIDIOC_S_FMT, &format) < 0)
-        {
-            throw std::logic_error( "ERROR : VIDIOC_S_FMT. Cannot set format" );
-        }
-    }
-
-    void* _alloc_buffers()
-    {
-        // we need to inform the device about buffers to use.
-        // and we need to allocate them.
-        // we’ll use a single buffer, and map our memory using mmap.
-        // All this information is sent using the VIDIOC_REQBUFS call and a
-        // v4l2_requestbuffers structure:
-        struct v4l2_requestbuffers bufrequest;
-        bufrequest.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-        bufrequest.memory = V4L2_MEMORY_MMAP;
-        bufrequest.count = 1;   // we are asking for one buffer
-
-        if(ioctl(fd, VIDIOC_REQBUFS, &bufrequest) < 0)
-        {
-            throw std::runtime_error("ERROR : VIDIOC_REQBUFS. Cannot allocate buffers");
-        }
-
-        // Now that the device knows how to provide its data,
-        // we need to ask it about the amount of memory it needs,
-        // and allocate it. This information is retrieved using the VIDIOC_QUERYBUF call,
-        // and its v4l2_buffer structure.
-
-        
-        memset(&bufferinfo, 0, sizeof(bufferinfo));
-
-        bufferinfo.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-        bufferinfo.memory = V4L2_MEMORY_MMAP;
-        bufferinfo.index = 0;
-
-        if(ioctl(fd, VIDIOC_QUERYBUF, &bufferinfo) < 0)
-        {
-            throw std::runtime_error("ERROR : VIDIOC_QUERYBUF. Cannot query buffer");
-        }
-
-
-        // map fd+offset into a process location (kernel will decide due to our NULL). lenght and
-        // properties are also passed
-        void * buffer_start = mmap(NULL, bufferinfo.length, PROT_READ | PROT_WRITE,MAP_SHARED, fd, bufferinfo.m.offset);
-
-        if(buffer_start == MAP_FAILED)
-        {
-            throw std::runtime_error("ERROR : mmap. Cannot map buffer");
-        }
-
-        // Fill this buffer with ceros. Initialization. Optional but nice to do
-        memset(buffer_start, 0, bufferinfo.length);
-
-        // Activate streaming
-        int type = bufferinfo.type;
-        if(ioctl(fd, VIDIOC_STREAMON, &type) < 0)
-        {
-            throw std::runtime_error("ERROR : VIDIOC_STREAMON. Cannot activate streaming");    
-        }
-
-        return buffer_start;
-    }
+    void _open_device( const std::string video);
+    void _set_format( Sensor_Types my_thermal );
+    void* _alloc_buffers();
 
 public:
-    BosonCamera()
-    {}
+    BosonCamera();
 
     void init( const std::string video, Sensor_Types my_thermal=Boson320, Video_Mode video_mode=RAW16 )
     {
@@ -247,11 +132,6 @@ public:
 
     void read()
     {
-        if( this->fd < 0 )
-        {
-            throw std::runtime_error("Device not initalised");
-        }
-
 	    // Put the buffer in the incoming queue.
 		if(ioctl(fd, VIDIOC_QBUF, &bufferinfo) < 0)
         {
@@ -277,25 +157,13 @@ public:
 		}
     }
 
-    const cv::Mat& get_linear() const
-    {
-        return this->thermal16_linear;
-    }
+    const cv::Mat& get_linear() const;
 
-    const cv::Mat& get_rgb() const
-    {
-        return this->thermal_rgb;
-    }
+    const cv::Mat& get_rgb() const;
 
-    Video_Mode get_video_mode() const
-    {
-        return this->video_mode;
-    }
+    Video_Mode get_video_mode() const;
 
-    ~BosonCamera()
-    {
-        this->stop();
-    }
+    ~BosonCamera();
 };
 
 #endif // BOSON_CAMERA_HPP
